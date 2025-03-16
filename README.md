@@ -1,7 +1,7 @@
 # mmr-lol
 para servidores LAS
 
-se basa en las ultimas 50 partidas jugadas el MMR
+se basa en las ultimas 80 partidas jugadas el MMR
 
 SOLO EVALUA EL MMR EN SOLO/Q
 
