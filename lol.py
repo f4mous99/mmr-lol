@@ -5,47 +5,47 @@ from tkinter import ttk, messagebox
 import threading
 
 # Configuración de la API (usar variable de entorno en producción)
-api_key = 'e'
+api_key = ''
 
 # --- Funciones auxiliares ---
 def roman_to_number(roman):
-    conversion = {'IV': 4, 'III': 3, 'II': 2, 'I': 1}
+    conversion = {'IV': 4, 'III': 3, 'II': 2, 'I': 1, '': 0}
     return conversion.get(roman, 0)
 
 def get_rank_from_mmr(mmr):
     ranges = [
-        (2800, "Challenger", ""),
-        (2600, "Grandmaster", ""),
-        (2400, "Master", ""),
-        (2200, "Diamante", 1),
-        (2100, "Diamante", 2),
-        (2000, "Diamante", 3),
-        (1900, "Diamante", 4),
-        (1800, "Esmeralda", 1),
-        (1700, "Esmeralda", 2),
-        (1600, "Esmeralda", 3),
-        (1500, "Esmeralda", 4),
-        (1400, "Platino", 1),
-        (1300, "Platino", 2),
-        (1200, "Platino", 3),
-        (1100, "Platino", 4),
-        (1000, "Oro", 1),
-        (900, "Oro", 2),
-        (800, "Oro", 3),
-        (700, "Oro", 4),
-        (600, "Plata", 1),
-        (500, "Plata", 2),
-        (400, "Plata", 3),
-        (300, "Plata", 4),
-        (200, "Bronce", 1),
-        (100, "Bronce", 2),
-        (0, "Bronce", 3)
+        (2800, "CHALLENGER", ""),
+        (2600, "GRANDMASTER", ""),
+        (2400, "MASTER", ""),
+        (2200, "DIAMOND", 1),
+        (2100, "DIAMOND", 2),
+        (2000, "DIAMOND", 3),
+        (1900, "DIAMOND", 4),
+        (1800, "EMERALD", 1),
+        (1700, "EMERALD", 2),
+        (1600, "EMERALD", 3),
+        (1500, "EMERALD", 4),
+        (1400, "PLATINUM", 1),
+        (1300, "PLATINUM", 2),
+        (1200, "PLATINUM", 3),
+        (1100, "PLATINUM", 4),
+        (1000, "GOLD", 1),
+        (900, "GOLD", 2),
+        (800, "GOLD", 3),
+        (700, "GOLD", 4),
+        (600, "SILVER", 1),
+        (500, "SILVER", 2),
+        (400, "SILVER", 3),
+        (300, "SILVER", 4),
+        (200, "BRONZE", 1),
+        (100, "BRONZE", 2),
+        (0, "IRON", 1)
     ]
     
     for limit, tier, division in ranges:
         if mmr >= limit:
             return f"{tier.upper()} {division}" if division else f"{tier.upper()}"
-    return "Hierro"
+    return "IRON"
 
 # --- Funciones de la API ---
 def get_puuid(api_key, game_name, tag_line):
@@ -87,7 +87,7 @@ def get_ranked_info_solo_duo(api_key, summoner_id):
 def get_match_history_solo_duo(api_key, puuid):
     url = f"https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids"
     headers = {'X-Riot-Token': api_key}
-    params = {'queue': 420, 'count': 50}
+    params = {'queue': 420, 'count': 90}
     
     try:
         response = requests.get(url, headers=headers, params=params)
@@ -228,7 +228,7 @@ class MMRCalculatorApp:
                 return
             
             # Paso 1: Obtener PUUID
-            self.log_message("[1/5] Obteniendo PUUID...")
+            self.log_message("[1/5] Encontrando Jugador...")
             puuid = get_puuid(api_key, game_name, tag_line)
             self.update_progress(20)
             
@@ -240,7 +240,7 @@ class MMRCalculatorApp:
             # Paso 3: Calcular Win Rate
             self.log_message("[3/5] Calculando rendimiento...")
             wins, losses = 0, 0
-            for match_id in match_ids[:50]:
+            for match_id in match_ids[:90]:
                 match_data = get_match_details(api_key, match_id)
                 for participant in match_data['info']['participants']:
                     if participant['puuid'] == puuid:
@@ -249,6 +249,8 @@ class MMRCalculatorApp:
                         else:
                             losses += 1
             total_games = wins + losses
+            if total_games == 0:
+             raise Exception("No hay partidas recientes en Solo/Duo.")
             win_rate = round((wins / total_games * 100), 2) if total_games > 0 else 0
             self.update_progress(60)
             
@@ -262,7 +264,7 @@ class MMRCalculatorApp:
             self.log_message("[5/5] Calculando MMR...")
             if ranked_info:
                 tier = ranked_info['tier']
-                rank = ranked_info['rank']
+                rank = ranked_info.get('rank', '')
                 lp = ranked_info['leaguePoints']
                 mmr = calculate_mmr(tier, rank, lp, win_rate)
                 estimated_rank = get_rank_from_mmr(mmr)
